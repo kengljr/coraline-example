@@ -55,56 +55,33 @@ jobs:
 
 # [optional] จุดนี้คือ step ถัดไป หลังจากที่ step แรก (build) สำเร็จ
   deploy:
-    #[optional] จุดนี้เป็นการกำหนด Env variables ใน Level ของ job นั้นๆ ซึ่งคุณสามารถกำหนด level ของ env ได้ตั้งแต่ root จุถึงระดับ step action แต่ละ step ได้เลย
+    needs: build
+    runs-on: ubuntu-latest
+
     env:
       NODE_ENV: production
-    #[optional] ตรงนี้เป็นการกำหนดว่า หาก step build ทำสำเร็จ จึงจะทำ step deploy ต่อ หากเราไม่ได้กำหนด ก็ยังสามารถทำงานต่อไปเป็นลำดับขั้นตอนตามปกติครับ
-    # เพียงแต่ว่า หาก step ก่อนหน้าพัง แต่ยังทำงานได้นั้น step นี้ก็จะไม่ถูก ignore ไปครับ
-    needs: [build]
-    # [required] กำหนดให้ step นี้ทำงานบน self-hosted ของเราเองครับ ซึ่งคุณสามารถไปดูรายละเอียดได้ที่
-    # https://help.github.com/en/actions/hosting-your-own-runners/about-self-hosted-runners
-    runs-on: [self-hosted]
-    # [optional] ในจุดนี้ เป้นการกำหนดให้ตัว job สามารถสร้างหลายตัวได้ และจะเป็นการทำงานกันแบบ parallel 
-    # กล่าวคือ หากระบบเดินทางถึงจุดนี้ จะมีการแตก Thread ออกเป็น 2 ตัวที่จะทำงานไปพร้อมกัน ในตัวอย่างกำหนด label แต่ละ Thread ไว้ว่า 10 และ 12
-    # จากนั้นคุณก็สามารถเรียก label เหล่านี้ได้โดยใช้งาน ${{ matrix.node }} >> Thread1 node 10, Thread2 node 12
+
     strategy:
       matrix:
         node: [10, 12]
-        
-    # [optional]: เป็นการใช้ service container ของทาง CI เอง ซึ่งจะมี requirement ที่ที่ Github กำหนดไว้คือ
-    # - ต้องเป็น linux ซึ่งในที่นี้ ถ้าใช้ Github-hosted ก็จะเป็น ubuntu-latest
-    # - หากคุณใช้ self-hosted คุณควรลง ubuntu และมี docker พร้อมอยู่เสมอ
-    # คุณไม่ต้องกังวลว่ามันจะหา port เจอไหม หรือต้อง map เพิ่มไหม เพราะจะมีการทำ briding-network ระหว่าง container ให้ เพียงแค่คุณเรียกใช้งาน Docker container ผ่าน hostname ก็เท่านั้นเอง
-    # สิ่งที่เป็นประโยชน์ในการใช้งาน service container นี้คือการจำลอง db หรือ cache server เป็นแบบ Docker ขึ้นใช้ในการทดสอนครับ
+
     services:
-      # [required] กำหนด lable ของ service
       redis:
-        # [required] pull container Redis ลงมาจาก Docker hub
         image: redis
-        # [optional] กำหนด port ของ container หากไม่มี ระบบจะ random ให้ (เหมือน explose port จาก Docker สู่ภายนอกครับ)
         ports:
           - 6379:6379
-        # [optional] กำหนด volumn ที่ให้ container สามารถ access เข้าไปใช้งานได้
-        volumes:
-          - /data/volumn:/vol_mounted
-          - /data/source
+
     steps:
-      # [required] Keyword uses เป็น keyword ที่สำคัญในเรื่องของการทำงานแต่ละ step by step ซึ่งคุณสามารถใช้งานได้ตั้งแต่
-      # - public action (เลือกเจ้าที่เป็น official จะดีที่สุด เพราะจะได้ไม่ต้องกัวลในแง่ของความปลอดภัย)
-      # - private action คือการเขียน custom action เอง โดยโค้ดจะต้องอยู่ใน .github/actions/.. เพื่อให้ workflow สามารถ hook ตัว action ที่คุณเขียนเอาไปใช้งานต่อได้
-      # - public docker เช่นเดียวกันกับการใช้งาน public action โดยคุณต้องเอา Docker image ไปฝากไว้ที่ Docker Hub ตั้งเป็น public แล้ว retrieve ลงมาใช้งาน
-      # ซึ่งการ pass parameters เข้าไปจะมีความต่างกันเพียงนิดหน่อยกับ action ปกติ
-      #[required]
-      - uses: actions/setup-node@v1
-      # [optional] จุดนี้เป็น input parameters ที่จะส่งค่าไปยัง action ที่เราใช้งาน ซึ่งในแต่ละ Action ก็มี input parameters ที่แตกต่างกันไป
+      - name: Setup Node
+        uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node }}
-      
-      # [required] ในตัวอย่างนี้เป็นการใช้งาน action ที่เป็น Docker container และมี input parameter เข้าไป
-      - uses: docker://gcr.io/cloud-builders/gradle
+
+      - name: Run echo from container
+        uses: docker://gcr.io/cloud-builders/gradle
         with:
           entrypoint: /bin/echo
-          args: The ${{ github.event_name }} event triggered this step.
+          args: "Triggered by ${{ github.event_name }}"
       
     
 
