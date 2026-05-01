@@ -1,0 +1,61 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, dev]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install deps
+        run: pip install -r backend/requirements.txt
+
+      - name: Check syntax on backend
+        run: python -m compileall backend/   
+
+      - name: Build frontend to check syntax
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Test SQL syntax (create table)
+        run: |
+          psql -h localhost -U postgres -d app_database -f db/schema.sql
+
+      - name: Build Docker-Compose testing
+        run: docker-compose up -d --build
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker-Compose
+        run: docker-compose up -d --build
+
+      - name: Test API on frontend server
+        run: curl --fail http://localhost:8000/users
+
+
+  deploy-dev:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to Dev
+        run: echo "Deploying to DEV environment..."
+
+  deploy-prod:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to PROD
+        run: echo "Deploying to PRODUCTION 🚀"
