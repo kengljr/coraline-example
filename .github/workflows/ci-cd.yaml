@@ -22,7 +22,7 @@ jobs:
 
       - name: Test SQL syntax (create table)
         run: |
-          psql -h localhost -U postgres -d app_database -f db/schema.sql
+          psql -h localhost -U postgres -d app_database -f database/init.sql
 
       - name: Build Docker-Compose testing
         run: docker-compose up -d --build
