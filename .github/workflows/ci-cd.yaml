@@ -21,7 +21,7 @@ jobs:
         run: test -f frontend/index.html
 
       - name: Build Docker-Compose testing
-        run: docker-compose up -d --build
+        run: docker compose up -d --build
 
   test:
     runs-on: ubuntu-latest
