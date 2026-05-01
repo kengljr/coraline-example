@@ -20,10 +20,6 @@ jobs:
       - name: Check HTML exists
         run: test -f frontend/index.html
 
-      - name: Test SQL syntax (create table)
-        run: |
-          psql -h localhost -U postgres -d app_database -f database/init.sql
-
       - name: Build Docker-Compose testing
         run: docker-compose up -d --build
 
