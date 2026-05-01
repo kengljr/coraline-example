@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
 import csv
 import io
+import pika
+import json
 
 app = FastAPI()
 
@@ -13,6 +15,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def publish_message(data):
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters('rabbitmq')  # docker service name
+    )
+    channel = connection.channel()
+
+    channel.queue_declare(queue='user_queue', durable=True)
+
+    channel.basic_publish(
+        exchange='',
+        routing_key='user_queue',
+        body=json.dumps(data),
+        properties=pika.BasicProperties(
+            delivery_mode=2,  # make message persistent
+        )
+    )
+
+    connection.close()
 
 # 🔹 connect DB
 def get_conn():
@@ -50,38 +71,12 @@ async def upload_file(file: UploadFile = File(...)):
 
     csv_reader = csv.DictReader(io.StringIO(text))
 
-    conn = get_conn()
-    cur = conn.cursor()
-
+    count = 0
     for row in csv_reader:
-        cur.execute(
-            """
-            INSERT INTO user_information (full_name, email, phone, city, country)
-            VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (email) DO NOTHING;
-            """,
-            (
-                row.get("full_name"),
-                row.get("email"),
-                row.get("phone"),
-                row.get("city"),
-                row.get("country"),
-            )
-        )
-
-    conn.commit()
-
-    # 🔥 return data หลัง insert
-    cur.execute("SELECT id, full_name, email FROM user_information ORDER BY id DESC")
-    rows = cur.fetchall()
-
-    cur.close()
-    conn.close()
+        publish_message(row)
+        count += 1
 
     return {
-        "message": "Upload success",
-        "data": [
-            {"id": r[0], "full_name": r[1], "email": r[2]}
-            for r in rows
-        ]
+        "message": "Upload queued",
+        "total": count
     }
