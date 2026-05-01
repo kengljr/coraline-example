@@ -1,0 +1,39 @@
+#Definined Workflow name on this
+name: CI Pipeline
+
+#Definined event trigger the workflow
+on:
+  push:
+    branches:
+    - main
+    - dev
+  pull_request:
+    branchces:
+    - main
+    - dev
+
+#order action in the jobs list in here
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+    
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+        run: echo "Setting python v3.11"
+      
+      - name: Install dependencies for python
+        run: |
+          pip install -r backend/requirements.txt
+
+      - name: Run tests (Optional)
+        env:
+        run: echo "No tests yet"
+
+            
+    
