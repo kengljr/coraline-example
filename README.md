@@ -2,9 +2,9 @@
 
 A simple full-stack system demonstrating scalable backend architecture using FastAPI, RabbitMQ, and PostgreSQL with load balancing via NGINX.
 
----
-
 ## 🏗️ Architecture Overview
+
+<a href="https://ibb.co/chKvfcxZ"><img src="https://i.ibb.co/HTL2wDXb/51260e73-c705-468f-a2d8-3cf2b3595122.png" alt="51260e73-c705-468f-a2d8-3cf2b3595122" border="0" /></a>
 
 - **NGINX**: Load balancer
 - **FastAPI**: Backend API (stateless, scalable)
