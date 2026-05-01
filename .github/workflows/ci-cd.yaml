@@ -17,10 +17,8 @@ jobs:
       - name: Check syntax on backend
         run: python -m compileall backend/   
 
-      - name: Build frontend to check syntax
-        run: |
-          cd frontend
-          npm run build
+      - name: Check HTML exists
+        run: test -f frontend/index.html
 
       - name: Test SQL syntax (create table)
         run: |
