@@ -62,60 +62,66 @@
   </div>
 
   <div class="box">
-    <h3>Insert User via TXT</h3>
-    <input type="file" id="fileInput" accept=".txt" />
+    <h3>Insert User via CSV</h3>
+    <input type="file" id="fileInput" accept=".csv" />
     <button onclick="uploadFile()">Upload</button>
   </div>
 </div>
 
 <script>
   async function loadUsers() {
-    try {
-      const res = await fetch("http://localhost:8000/users");
-      const data = await res.json();
+  try {
+    const res = await fetch("http://localhost:8000/users");
+    const data = await res.json();
 
-      const list = document.getElementById("userList");
-      list.innerHTML = "";
+    const list = document.getElementById("userList");
+    list.innerHTML = "";
 
-      data.forEach(user => {
-        const li = document.createElement("li");
-        li.textContent = `ID: ${user.id} | Name: ${user.name}`;
-        list.appendChild(li);
-      });
+    data.forEach(user => {
+      const li = document.createElement("li");
 
-    } catch (err) {
-      console.error(err);
-      alert("Failed to load users");
-    }
+      li.textContent = `ID: ${user.id} | Name: ${user.full_name || "-"} | Email: ${user.email || "-"}`;
+
+      list.appendChild(li);
+    });
+
+  } catch (err) {
+    console.error(err);
+    alert("Failed to load users");
   }
+}
 
   async function uploadFile() {
-    const fileInput = document.getElementById("fileInput");
-    const file = fileInput.files[0];
+  const fileInput = document.getElementById("fileInput");
+  const file = fileInput.files[0];
 
-    if (!file) {
-      alert("Please select a TXT file");
-      return;
-    }
-
-    const text = await file.text();
-
-    // assume format: name per line
-    const lines = text.split("\n").filter(l => l.trim() !== "");
-
-    for (let name of lines) {
-      await fetch("http://localhost:8000/users", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ name })
-      });
-    }
-
-    alert("Upload completed");
-    loadUsers();
+  if (!file) {
+    alert("Please select a CSV file");
+    return;
   }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch("http://localhost:8000/upload", {
+    method: "POST",
+    body: formData
+  });
+
+  const result = await res.json();
+
+  alert(result.message);
+
+  // render data กลับ
+  const list = document.getElementById("userList");
+  list.innerHTML = "";
+
+  result.data.forEach(user => {
+    const li = document.createElement("li");
+    li.textContent = `ID: ${user.id} | Name: ${user.full_name} | Email: ${user.email}`;
+    list.appendChild(li);
+  });
+}
 </script>
 
 </body>
