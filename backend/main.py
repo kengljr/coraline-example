@@ -1,10 +1,18 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import (    # ← เพิ่มทุกตัวที่ใช้
+    Counter,
+    Histogram,
+    generate_latest,
+    CONTENT_TYPE_LATEST
+)
+from fastapi.responses import Response
 import psycopg2
 import csv
 import io
 import pika
 import json
+import time
 
 app = FastAPI()
 
@@ -15,6 +23,38 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ─── Prometheus Metrics ───────────────────────────────────────────
+UPLOAD_COUNTER = Counter(
+    "upload_requests_total",
+    "Total number of upload requests",
+    ["status"]
+)
+
+UPLOAD_ROWS_COUNTER = Counter(
+    "upload_rows_total",
+    "Total number of CSV rows queued"
+)
+
+UPLOAD_DURATION = Histogram(
+    "upload_duration_seconds",
+    "Time spent processing upload",
+    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
+)
+
+UPLOAD_FILE_SIZE = Histogram(
+    "upload_file_size_bytes",
+    "Size of uploaded CSV files in bytes",
+    buckets=[1024, 10240, 102400, 1048576, 10485760]  # 1KB to 10MB
+)
+# ─────────────────────────────────────────────────────────────────
+
+@app.get("/metrics")
+def metrics():
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST
+    )
 
 def publish_message(data):
     connection = pika.BlockingConnection(
@@ -66,17 +106,32 @@ def get_users():
 # 🔹 upload CSV แล้ว insert
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
-    content = await file.read()
-    text = content.decode("utf-8")
+    start_time = time.time()
+    try:
+        content = await file.read()
+        
+        # Track file size
+        UPLOAD_FILE_SIZE.observe(len(content))
+        
+        text = content.decode("utf-8")
+        csv_reader = csv.DictReader(io.StringIO(text))
+        
+        count = 0
+        for row in csv_reader:
+            publish_message(row)
+            count += 1
 
-    csv_reader = csv.DictReader(io.StringIO(text))
+        # Track success metrics
+        UPLOAD_COUNTER.labels(status="success").inc()
+        UPLOAD_ROWS_COUNTER.inc(count)
 
-    count = 0
-    for row in csv_reader:
-        publish_message(row)
-        count += 1
+        return {"message": "Upload queued", "total": count}
 
-    return {
-        "message": "Upload queued",
-        "total": count
-    }
+    except Exception as e:
+        # Track failed metrics
+        UPLOAD_COUNTER.labels(status="failed").inc()
+        raise e
+
+    finally:
+        # Always record duration
+        UPLOAD_DURATION.observe(time.time() - start_time)
