@@ -1,6 +1,7 @@
 import pika
 import json
 import psycopg2
+import time
 
 def get_conn():
     return psycopg2.connect(
@@ -45,9 +46,19 @@ def callback(ch, method, properties, body):
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters('rabbitmq')
-)
+while True:
+    try:
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(
+                host="rabbitmq",
+                port=5672
+            )
+        )
+        print("Connected to RabbitMQ")
+        break
+    except pika.exceptions.AMQPConnectionError:
+        print("RabbitMQ not ready, retrying in 5 seconds...")
+        time.sleep(5)
 channel = connection.channel()
 
 channel.queue_declare(queue='user_queue', durable=True)
