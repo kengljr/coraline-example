@@ -5,7 +5,7 @@ import time
 
 def get_conn():
     return psycopg2.connect(
-        host="postgres_db",
+        host="db",
         database="app_database",
         user="postgres",
         password="postgres",

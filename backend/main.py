@@ -78,7 +78,7 @@ def publish_message(data):
 # 🔹 connect DB
 def get_conn():
     return psycopg2.connect(
-        host="postgres_db",          # docker service name
+        host="db",          # docker service name
         database="app_database",
         user="postgres",
         password="postgres",

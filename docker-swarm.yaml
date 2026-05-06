@@ -2,12 +2,16 @@ version: '3.8'
 
 services:
   frontend:
-    build: ./frontend
+    image: coraline-frontend
     ports:
       - "8080:80"
+    networks:
+      - app_network
+    
 
   backend:
-    build: ./backend
+    image: coraline-backend
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
     deploy:
@@ -40,16 +44,13 @@ services:
       - app_network
 
   worker:
-    build: ./backend   # หรือ . ถ้า Dockerfile อยู่ root
+    image: coraline-backend
     command: python worker.py
-    depends_on:
-      - rabbitmq
-      - db
     networks:
       - app_network
+
   grafana:
     image: grafana/grafana
-    container_name: grafana_monitoring
     ports:
       - "3000:3000"
     networks:
@@ -57,7 +58,6 @@ services:
 
   prometheus:
     image: prom/prometheus
-    container_name: prometheus_monitoring
     ports:
       - "9090:9090"
     volumes:
@@ -68,11 +68,10 @@ services:
 
   db:
     image: postgres:15
-    container_name: postgres_db
-    restart: always
+    restart: on-failure
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: app_database
     ports:
       - "5432:5432"
@@ -88,4 +87,4 @@ volumes:
 
 networks:
   app_network:
-    driver: bridge
+    driver: overlay
